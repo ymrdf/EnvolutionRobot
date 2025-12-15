@@ -1,77 +1,104 @@
-# Robot FPS
-An arcade-style robot FPS environment.
+# 🤖 Robot FPS
+
+> An arcade-style robot FPS environment for reinforcement learning built with Godot.
 
 https://github.com/user-attachments/assets/2086cf9e-ead8-4e6b-88b2-0147e3c2d882
 
-# Goal:
+---
 
-The agent needs to hit other robots while avoiding getting hit.
+## 🎯 Goal
 
-# Observations:
+Train an AI agent to hit enemy robots while avoiding incoming fire. Survive, aim, and dominate the arena!
 
-The agent uses stacked observations from an extended Raycast sensor. The sensor is modified to include information on how much any detected robot is facing toward (or away from) the agent.
+---
 
-Frame-stack is set to 3 by default, meaning that the Raycast data sent to the agent includes data from 2 previous steps as well as the current step.
+## 👁️ Observations
 
-![Raycast observations screenshot](https://github.com/user-attachments/assets/48899ec6-6f74-4fa2-956f-3c7400840752)
+The agent observes the world using **two RGB camera sensors** (stereo vision) plus its current HP.
 
-# Action space:
+- **`right_eye`**: RGB camera pixel encoding from the robot’s `RightEye` camera mount (rendered at `320×300`)
+- **`left_eye`**: RGB camera pixel encoding from the robot’s `LeftEye` camera mount (rendered at `320×300`)
+- **`hp`**: Current hit points as a single scalar in a 1D array (`[hp]`)
 
-There are 4 discrete actions used by the agent:
+These observations are produced by `RobotAIController` via `RGBCameraSensor3D` sensors attached at runtime.
+
+---
+
+## 🎮 Action Space
+
+The agent has **4 discrete actions** available:
+
+| Action                | Size | Type     | Description                |
+| --------------------- | ---- | -------- | -------------------------- |
+| `accelerate_forward`  | 3    | discrete | Move forward/backward/stay |
+| `accelerate_sideways` | 3    | discrete | Strafe left/right/stay     |
+| `turn`                | 3    | discrete | Rotate left/right/stay     |
+| `shoot`               | 2    | discrete | Fire weapon or hold        |
 
 ```gdscript
 func get_action_space() -> Dictionary:
-	return {
-		"accelerate_forward": {"size": 3, "action_type": "discrete"},
-		"accelerate_sideways": {"size": 3, "action_type": "discrete"},
-		"turn": {"size": 3, "action_type": "discrete"},
-		"shoot": {"size": 2, "action_type": "discrete"},
-	}
+    return {
+        "accelerate_forward": {"size": 3, "action_type": "discrete"},
+        "accelerate_sideways": {"size": 3, "action_type": "discrete"},
+        "turn": {"size": 3, "action_type": "discrete"},
+        "shoot": {"size": 2, "action_type": "discrete"},
+    }
 ```
 
-# Rewards and episode end condition:
+---
 
-`+1` For hitting another Robot (unless the Robot is in the protection period after respawning).
+## 🏆 Rewards & Episode Conditions
 
-Robots have `2` HP each and the episode for a robot ends if HP reaches `0` (after taking 2 shots), at which point the robot gets re-spawned to a random free position on the map.
+### Rewards
 
-# Running inference/testing the environment:
+| Event                          | Reward |
+| ------------------------------ | ------ |
+| Hit another robot              | `+1`   |
+| Hit robot in protection period | `0`    |
 
-1. Open the project in Godot Editor
-2. Open either `res://scenes/testing_scene/testing_scene.tscn` (AI vs AI) or `res://scenes/testing_scene/testing_scene_human_vs_ai.tscn` (Human VS AI)
-3. Press `F6` to start the scene.
+### Episode End
 
-Note: For human VS AI mode, keyboard controls are:
+- Each robot has **2 HP**
+- Episode ends when HP reaches **0** (after taking 2 shots)
+- On death, the robot **respawns** at a random free position on the map
 
-- `WASD` or `UP/DOWN` arrows for movement,
-- `LEFT/RIGHT` arrows for rotation,
-- `SPACE` for shooting.
+---
 
-# Training:
+## 🚀 Getting Started
 
-These are the training settings used to train the included onnx file:
+### Running Inference / Testing
 
-[SB3 example script](https://github.com/edbeeching/godot_rl_agents/blob/main/examples/stable_baselines3_example.py) was used for training, with the following changes:
+1. Open the project in **Godot Editor**
+2. Choose a scene:
+   - `res://scenes/testing_scene/testing_scene.tscn` → **AI vs AI**
+   - `res://scenes/testing_scene/testing_scene_human_vs_ai.tscn` → **Human vs AI**
+3. Press `F6` to start the scene
 
-```python
-    model: PPO = PPO(
-        "MultiInputPolicy",
-        env,
-        verbose=2,
-        n_steps=256,
-        batch_size=1024,
-        target_kl=0.02,
-        tensorboard_log=args.experiment_dir,
-    )
+### Keyboard Controls (Human vs AI Mode)
+
+| Action            | Keys                   |
+| ----------------- | ---------------------- |
+| Move Forward/Back | `W` / `S` or `↑` / `↓` |
+| Strafe Left/Right | `A` / `D`              |
+| Rotate            | `←` / `→`              |
+| Shoot             | `Space`                |
+
+---
+
+## 📁 Project Structure
+
+```
+RobotFPS/
+├── scenes/
+│   ├── robot/           # Robot agent and AI controller
+│   ├── playing_area/    # Game arena and manager
+│   ├── testing_scene/   # Test environments
+│   └── block/           # Arena obstacles
+└── readme.md
 ```
 
-SB3 example script cmd arguments:
+---
 
-```python
---speedup=32
---n_parallel=6
---timesteps=4_000_000
---onnx_export_path=model.onnx
-```
+## 📝 License
 
-This environment was made by [Ivan267.](https://github.com/Ivan-267)
+Part of the [Godot RL Agents Examples](https://github.com/edbeeching/godot_rl_agents_examples) project.

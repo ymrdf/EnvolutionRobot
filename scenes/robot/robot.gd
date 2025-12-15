@@ -23,7 +23,7 @@ var spawn_protection_timer_duration := 2.0
 var spawn_protection_timer := spawn_protection_timer_duration
 
 var hp_initial := 6
-var hp_max := 30
+var hp_max := 100
 var hp := hp_initial:
 	set(value):
 		hp = value
@@ -191,6 +191,10 @@ func heal(amount: int):
 		hp = hp_max
 
 
+func take_damage(amount: int):
+	hp -= amount
+
+
 func handle_hp_loss(delta: float):
 	passive_hp_loss_timer += delta
 	if passive_hp_loss_timer >= 60.0:
@@ -199,9 +203,9 @@ func handle_hp_loss(delta: float):
 	
 	if linear_velocity.length() > 0.05:
 		movement_hp_loss_timer += delta
-		if movement_hp_loss_timer >= 60.0:
-			hp -= 5
-			movement_hp_loss_timer -= 60.0
+		if movement_hp_loss_timer >= 30.0:
+			hp -= 1
+			movement_hp_loss_timer -= 30.0
 
 
 func setup_health_bar():

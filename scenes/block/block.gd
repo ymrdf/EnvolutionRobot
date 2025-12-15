@@ -3,13 +3,34 @@ class_name Block
 
 @export var playing_area_size: float = 30.0
 
+enum BlockType { GREEN, RED }
+var block_type: BlockType = BlockType.GREEN
+
 func _ready():
 	reset()
 
 func _on_body_entered(body):
 	if body is Robot:
-		body.heal(10)
+		if block_type == BlockType.GREEN:
+			body.heal(5)
+		else:  # RED block
+			body.take_damage(5)
 		queue_free()
+
+func set_block_type(type: BlockType):
+	block_type = type
+	var mesh_instance = $MeshInstance3D
+	if mesh_instance:
+		var material = mesh_instance.mesh.material as StandardMaterial3D
+		if material:
+			# 需要复制材质以避免所有block共享同一个材质
+			material = material.duplicate()
+			mesh_instance.mesh = mesh_instance.mesh.duplicate()
+			mesh_instance.mesh.material = material
+			if type == BlockType.GREEN:
+				material.albedo_color = Color(0, 1, 0, 1)  # 绿色
+			else:
+				material.albedo_color = Color(1, 0, 0, 1)  # 红色
 
 func reset():
 	position.y = 0.5
