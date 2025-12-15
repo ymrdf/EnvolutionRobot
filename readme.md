@@ -2,14 +2,6 @@
 
 > An arcade-style robot FPS environment for reinforcement learning built with Godot.
 
-https://github.com/user-attachments/assets/2086cf9e-ead8-4e6b-88b2-0147e3c2d882
-
----
-
-## 🎯 Goal
-
-Train an AI agent to hit enemy robots while avoiding incoming fire. Survive, aim, and dominate the arena!
-
 ---
 
 ## 👁️ Observations
