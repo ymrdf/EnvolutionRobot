@@ -66,7 +66,7 @@ func _ready():
 func _initialize():
 	_get_agents()
 	args = _get_args()
-	Engine.physics_ticks_per_second = _get_speedup() * 60  # Replace with function body.
+	Engine.physics_ticks_per_second = _get_speedup() * 20  # Replace with function body.
 	Engine.time_scale = _get_speedup() * 1.0
 	prints(
 		"physics ticks",
@@ -529,7 +529,7 @@ func _reset_agents_if_done(agents = all_agents):
 func _reset_agents(agents = all_agents):
 	for agent in agents:
 		agent.needs_reset = true
-		#agent.reset()
+		agent.reset()
 
 
 func _get_obs_from_agents(agents: Array = all_agents):

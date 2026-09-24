@@ -22,8 +22,8 @@ var shoot_ball_timer := shoot_ball_timer_duration
 var spawn_protection_timer_duration := 2.0
 var spawn_protection_timer := spawn_protection_timer_duration
 
-var hp_initial := 6
-var hp_max := 100
+var hp_initial := 6.0
+var hp_max := 100.0
 var hp := hp_initial:
 	set(value):
 		hp = value
@@ -34,8 +34,15 @@ var health_bar_bg: Sprite3D
 const HEALTH_BAR_WIDTH := 1
 const HEALTH_BAR_HEIGHT := 0.15
 
-var passive_hp_loss_timer: float = 0.0
-var movement_hp_loss_timer: float = 0.0
+var passive_hp_loss_rate: float = 1.0 / 180.0  # 每秒扣血量（被动）
+var movement_hp_loss_rate: float = 1.0 / 90.0  # 每秒扣血量（移动）
+
+# ===== DEBUG: delta 监测 =====
+var _debug_frame_count: int = 0
+var _debug_print_interval: int = 300  # 每 300 个物理帧打印一次
+var _debug_delta_sum: float = 0.0
+var _debug_delta_min: float = INF
+var _debug_delta_max: float = 0.0
 
 
 func _ready():
@@ -59,8 +66,6 @@ func reset():
 	spawn_protection_timer = spawn_protection_timer_duration
 	shoot_ball_timer = shoot_ball_timer_duration
 	hp = hp_initial
-	passive_hp_loss_timer = 0.0
-	movement_hp_loss_timer = 0.0
 
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
@@ -96,7 +101,8 @@ func get_random_free_position() -> Vector2:
 
 
 func _physics_process(delta):
-	reset_if_needed()
+	#reset_if_needed()
+	_debug_print_delta(delta)
 
 	handle_human_controls()
 
@@ -115,6 +121,33 @@ func _physics_process(delta):
 	handle_shooting(delta)
 	handle_animation(linear_velocity)
 	handle_hp_loss(delta)
+
+
+## ===== DEBUG: 每隔一段时间打印 delta 信息 =====
+func _debug_print_delta(delta: float):
+	_debug_frame_count += 1
+	_debug_delta_sum += delta
+	_debug_delta_min = min(_debug_delta_min, delta)
+	_debug_delta_max = max(_debug_delta_max, delta)
+
+	if _debug_frame_count % _debug_print_interval == 0:
+		var avg_delta = _debug_delta_sum / _debug_print_interval
+		print(
+			"[DEBUG delta] 帧=%d | delta=%.6f | 平均=%.6f | 最小=%.6f | 最大=%.6f | physics_tps=%d | time_scale=%.1f | 理论delta=%.6f" % [
+				_debug_frame_count,
+				delta,
+				avg_delta,
+				_debug_delta_min,
+				_debug_delta_max,
+				Engine.physics_ticks_per_second,
+				Engine.time_scale,
+				Engine.time_scale / Engine.physics_ticks_per_second
+			]
+		)
+		# 重置统计
+		_debug_delta_sum = 0.0
+		_debug_delta_min = INF
+		_debug_delta_max = 0.0
 
 
 func handle_human_controls():
@@ -145,11 +178,13 @@ func spawn_ball():
 	get_parent().add_child(ball_instance)
 	ball_instance = ball_instance as RigidBody3D
 	ball_instance.global_transform = launcher.global_transform
-	ball_instance.global_position = (launcher.global_position - launcher.global_basis.z)
-	ball_instance.linear_velocity = -ball_instance.basis.z * 60
+	ball_instance.global_position = (launcher.global_position + launcher.global_basis.z)
+	ball_instance.linear_velocity = ball_instance.basis.z * 60
 	ball_instance.spawned_by_robot = self
 	ball_instance.add_collision_exception_with(self)
 	ball_instance.set_color(robot_color)
+	# 发射球消耗HP
+	hp -= 0.02
 
 
 ## Handles the robot animation
@@ -185,27 +220,24 @@ func just_hit_another_robot():
 	ai_controller.reward += 1
 
 
-func heal(amount: int):
+func heal(amount: float):
 	hp += amount
 	if hp > hp_max:
 		hp = hp_max
 
 
-func take_damage(amount: int):
+func take_damage(amount: float):
 	hp -= amount
 
 
 func handle_hp_loss(delta: float):
-	passive_hp_loss_timer += delta
-	if passive_hp_loss_timer >= 60.0:
-		hp -= 1
-		passive_hp_loss_timer -= 60.0
+	# 被动持续扣血
+	hp -= passive_hp_loss_rate * delta
 	
-	if linear_velocity.length() > 0.05:
-		movement_hp_loss_timer += delta
-		if movement_hp_loss_timer >= 30.0:
-			hp -= 1
-			movement_hp_loss_timer -= 30.0
+	# 移动时额外扣血
+	var input_magnitude = Vector2(requested_acceleration_forward, requested_acceleration_sideways).length()
+	if input_magnitude > 0.01:
+		hp -= movement_hp_loss_rate * delta
 
 
 func setup_health_bar():

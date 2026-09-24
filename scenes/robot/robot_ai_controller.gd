@@ -39,6 +39,9 @@ func _setup_sensors():
 func reset():
 	n_steps = 0
 	needs_reset = false
+	if _player.hp <= 0:
+		_player.reset()
+
 
 func get_obs() -> Dictionary:
 	var obs = {}
@@ -92,6 +95,7 @@ func get_action_space() -> Dictionary:
 
 
 func set_action(action: Dictionary) -> void:
+	print("forward %d ,side: %d , shoot %d ，turn: %d" % [action.accelerate_forward,action.accelerate_sideways,action.shoot, action.turn])
 	_player.requested_acceleration_forward = action.accelerate_forward - 1
 	_player.requested_acceleration_sideways = action.accelerate_sideways - 1
 	_player.requested_turn = action.turn - 1
