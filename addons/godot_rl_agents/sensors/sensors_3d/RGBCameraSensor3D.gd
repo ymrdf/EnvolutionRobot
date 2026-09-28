@@ -24,6 +24,11 @@ var camera_pixels = null
 
 func _ready():
 	sub_viewport.size = render_image_resolution
+	# Sensor rendering must not depend on the visibility of its preview sprite.
+	sub_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	# Observations represent a discrete physics state, not a smoothed display pose.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	$SubViewport/Camera.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	camera_texture.scale = displayed_image_scale_factor
 
 	if downscale_image and display_downscaled_image:
@@ -34,7 +39,7 @@ func _ready():
 
 
 func get_camera_pixel_encoding():
-	var image := camera_texture.get_texture().get_image() as Image
+	var image := sub_viewport.get_texture().get_image() as Image
 
 	if downscale_image:
 		image.resize(

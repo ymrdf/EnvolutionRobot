@@ -178,6 +178,9 @@ func _physics_process(_delta):
 	# two modes, human control, agent control
 	# pause tree, send obs, get actions, set actions, unpause tree
 
+	if not initialized:
+		return
+
 	_demo_record_process()
 
 	if n_action_steps % action_repeat != 0:
@@ -194,6 +197,12 @@ func _physics_process(_delta):
 func _training_process():
 	if connected:
 		get_tree().set_pause(true)
+		# Python can delay the main loop until Godot runs catch-up physics ticks
+		# without rendering. Draw before reading both eyes, even within that batch.
+		# Do not await a frame with SceneTree paused from a physics callback: that
+		# disables rigid-body integration for the tick that is still in progress.
+		if just_reset or need_to_send_obs:
+			RenderingServer.force_draw(false)
 
 		if just_reset:
 			just_reset = false
@@ -201,9 +210,8 @@ func _training_process():
 
 			var reply = {"type": "reset", "obs": obs}
 			_send_dict_as_json_message(reply)
-			# this should go straight to getting the action and setting it checked the agent, no need to perform one phyics tick
-			get_tree().set_pause(false)
-			return
+			# Wait for the next action below, while still paused. Returning with
+			# physics running here adds an uncontrolled tick after the reset reply.
 
 		if need_to_send_obs:
 			need_to_send_obs = false

@@ -1,0 +1,46 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://cswj8sv0e25w8" path="res://scenes/playing_area/playing_area.tscn" id="1_4yg18"]
+[ext_resource type="Script" uid="uid://0veyglx8yxqj" path="res://addons/godot_rl_agents/sync.gd" id="2_ts53t"]
+
+[ext_resource type="Script" path="res://scenes/training_scene/energy_density_scene.gd" id="3_energy"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_gef0h"]
+sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+ground_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+
+[sub_resource type="Sky" id="Sky_uxkup"]
+sky_material = SubResource("ProceduralSkyMaterial_gef0h")
+
+[sub_resource type="Environment" id="Environment_ej0s4"]
+background_mode = 2
+sky = SubResource("Sky_uxkup")
+tonemap_mode = 2
+glow_enabled = true
+
+[node name="TrainingScene" type="Node3D" unique_id=1012911642]
+
+script = ExtResource("3_energy")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1724491034]
+environment = SubResource("Environment_ej0s4")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1996334661]
+transform = Transform3D(-0.866024, -0.433016, 0.250001, 0, 0.499998, 0.866026, -0.500003, 0.749999, -0.43301, 0, 0, 0)
+shadow_enabled = true
+
+[node name="PlayingArea" parent="." unique_id=1309939205 instance=ExtResource("1_4yg18")]
+
+number_of_green_blocks_to_spawn = 0
+number_of_red_blocks_to_spawn = 0
+min_green_blocks = 0
+min_red_blocks = 0
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1845578065]
+transform = Transform3D(1, 0, 0, 0, 0.422618, 0.906308, 0, -0.906308, 0.422618, 0, 32.682, 17.244)
+fov = 40.4
+
+[node name="Sync" type="Node" parent="." unique_id=210881058]
+script = ExtResource("2_ts53t")
+action_repeat = 1
+onnx_model_path = "model.onnx"
