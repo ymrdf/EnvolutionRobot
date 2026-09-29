@@ -56,6 +56,7 @@ func get_obs() -> Dictionary:
 	else:
 		obs["hp"] = [0.0]
 		
+	obs["block_counts"] = [_player.green_blocks_collected, _player.red_blocks_collected]
 	return obs
 
 func _shape_to_int(shape: Array) -> Array:
@@ -72,6 +73,7 @@ func get_obs_space() -> Dictionary:
 		spaces["left_eye"] = {"size": _shape_to_int(left_eye_sensor.get_camera_shape()), "space": "box"}
 		
 	spaces["hp"] = {"size": [1], "space": "box"}
+	spaces["block_counts"] = {"size": [2], "space": "box"}
 	return spaces
 
 ## Overriden method to exclude reset on timeout
@@ -95,7 +97,7 @@ func get_action_space() -> Dictionary:
 
 
 func set_action(action: Dictionary) -> void:
-	print("forward %d ,side: %d , shoot %d ，turn: %d" % [action.accelerate_forward,action.accelerate_sideways,action.shoot, action.turn])
+	# Actions are recorded by the trainer; avoid per-agent per-frame console spam.
 	_player.requested_acceleration_forward = action.accelerate_forward - 1
 	_player.requested_acceleration_sideways = action.accelerate_sideways - 1
 	_player.requested_turn = action.turn - 1

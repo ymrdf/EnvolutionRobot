@@ -22,6 +22,8 @@ var shoot_ball_timer := shoot_ball_timer_duration
 var spawn_protection_timer_duration := 2.0
 var spawn_protection_timer := spawn_protection_timer_duration
 
+var green_blocks_collected: int = 0
+var red_blocks_collected: int = 0
 var hp_initial := 6.0
 var hp_max := 100.0
 var hp := hp_initial:

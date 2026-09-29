@@ -12,8 +12,10 @@ func _ready():
 func _on_body_entered(body):
 	if body is Robot:
 		if block_type == BlockType.GREEN:
+			body.green_blocks_collected += 1
 			body.heal(5)
 		else:  # RED block
+			body.red_blocks_collected += 1
 			body.take_damage(5)
 		queue_free()
 

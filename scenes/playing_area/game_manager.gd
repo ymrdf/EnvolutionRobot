@@ -1,6 +1,7 @@
 extends Node3D
 class_name GameManager
 
+@export var policy_labels: Array[String] = []
 @export var robot_scene: PackedScene
 @export var block_scene:PackedScene
 @export var number_of_robots_to_spawn: int = 1
@@ -43,6 +44,8 @@ func spawn_robots():
 		robot.set_color(Color.from_hsv(i / float(number_of_robots_to_spawn), 0.9, 0.8))
 		_robots.append(robot)
 		robot.ai_controller.game_manager = self
+		if i < policy_labels.size():
+			robot.ai_controller.policy_name = policy_labels[i]
 
 
 func _setup_block_check_timer():

@@ -486,8 +486,19 @@ func handle_message() -> bool:
 		return true
 
 	if message["type"] == "reset":
-		print("resetting all agents")
-		_reset_agents()
+		if message.has("agent_indices"):
+			var selected: Array = []
+			for index in message["agent_indices"]:
+				assert(int(index) >= 0 and int(index) < agents_training.size())
+				selected.append(agents_training[int(index)])
+			_reset_agents(selected)
+			# Reply while still paused: respawning one competitor must not run
+			# an uncommanded physics tick for every other competitor.
+			RenderingServer.force_draw(false)
+			_send_dict_as_json_message({"type": "reset", "obs": _get_obs_from_agents(agents_training)})
+			return handle_message()
+		else:
+			_reset_agents()
 		just_reset = true
 		get_tree().set_pause(false)
 		#print("resetting forcing draw")
