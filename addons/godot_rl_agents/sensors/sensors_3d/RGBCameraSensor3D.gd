@@ -66,3 +66,10 @@ func get_camera_shape() -> Array:
 		return [4, size.y, size.x]
 	else:
 		return [3, size.y, size.x]
+
+
+func get_camera_bytes() -> PackedByteArray:
+	var image := sub_viewport.get_texture().get_image() as Image
+	# Match the legacy RGB8 payload exactly, without hexadecimal expansion.
+	assert(image.get_format() == Image.FORMAT_RGB8)
+	return image.get_data()

@@ -16,12 +16,21 @@ func init(player: Node3D):
 	_setup_sensors()
 
 func _setup_sensors():
+	var eye_width = 320
+	var eye_height = 300
+	for arg in OS.get_cmdline_args():
+		if arg.begins_with("--eye_width="):
+			eye_width = int(arg.get_slice("=", 1))
+		if arg.begins_with("--eye_height="):
+			eye_height = int(arg.get_slice("=", 1))
+	assert(eye_width >= 36 and eye_height >= 36)
+	var eye_resolution = Vector2(eye_width, eye_height)
 	# Right Eye
 	var right_cam = _player.get_node_or_null("RightEye")
 	if right_cam:
 		right_eye_sensor = RGB_SENSOR_SCENE.instantiate()
 		right_eye_sensor.name = "RightEyeSensor"
-		right_eye_sensor.render_image_resolution = Vector2(320, 300)
+		right_eye_sensor.render_image_resolution = eye_resolution
 		right_eye_sensor.displayed_image_scale_factor = Vector2(0.5, 0.5)  # 调小预览显示
 		_player.add_child(right_eye_sensor)
 		right_eye_sensor.transform = right_cam.transform
@@ -31,7 +40,7 @@ func _setup_sensors():
 	if left_cam:
 		left_eye_sensor = RGB_SENSOR_SCENE.instantiate()
 		left_eye_sensor.name = "LeftEyeSensor"
-		left_eye_sensor.render_image_resolution = Vector2(320, 300)
+		left_eye_sensor.render_image_resolution = eye_resolution
 		left_eye_sensor.displayed_image_scale_factor = Vector2(0.5, 0.5)  # 调小预览显示
 		_player.add_child(left_eye_sensor)
 		left_eye_sensor.transform = left_cam.transform
@@ -102,3 +111,20 @@ func set_action(action: Dictionary) -> void:
 	_player.requested_acceleration_sideways = action.accelerate_sideways - 1
 	_player.requested_turn = action.turn - 1
 	_player.shoot_ball_requested = bool(action.shoot)
+
+
+func get_obs_fast(include_rgb: bool = true) -> Dictionary:
+	var obs = {"hp": [_player.hp], "block_counts": [_player.green_blocks_collected, _player.red_blocks_collected]}
+	if include_rgb:
+		obs["right_eye"] = right_eye_sensor.get_camera_bytes()
+		obs["left_eye"] = left_eye_sensor.get_camera_bytes()
+	return obs
+
+
+func restart_competition_body() -> bool:
+	_player.reset()
+	n_steps = 0
+	needs_reset = false
+	done = false
+	reward = 0.0
+	return true

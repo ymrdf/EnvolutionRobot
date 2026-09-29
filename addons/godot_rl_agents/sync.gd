@@ -43,6 +43,8 @@ var demo_trajectories: Array
 var current_demo_trajectory: Array
 
 var need_to_send_obs = false
+var raw_rgb_transport = false
+var step_include_rgb = true
 var args = null
 var initialized = false
 var just_reset = false
@@ -66,6 +68,7 @@ func _ready():
 func _initialize():
 	_get_agents()
 	args = _get_args()
+	raw_rgb_transport = args.get("transport", "hex") == "raw"
 	Engine.physics_ticks_per_second = _get_speedup() * 20  # Replace with function body.
 	Engine.time_scale = _get_speedup() * 1.0
 	prints(
@@ -201,7 +204,7 @@ func _training_process():
 		# without rendering. Draw before reading both eyes, even within that batch.
 		# Do not await a frame with SceneTree paused from a physics callback: that
 		# disables rigid-body integration for the tick that is still in progress.
-		if just_reset or need_to_send_obs:
+		if just_reset or (need_to_send_obs and step_include_rgb):
 			RenderingServer.force_draw(false)
 
 		if just_reset:
@@ -219,7 +222,7 @@ func _training_process():
 			var done = _get_done_from_agents()
 			#_reset_agents_if_done() # this ensures the new observation is from the next env instance : NEEDS REFACTOR
 
-			var obs = _get_obs_from_agents(agents_training)
+			var obs = _get_obs_from_agents(agents_training, step_include_rgb)
 
 			var reply = {"type": "step", "obs": obs, "reward": reward, "done": done}
 			_send_dict_as_json_message(reply)
@@ -403,7 +406,23 @@ func _get_dict_json_message():
 
 
 func _send_dict_as_json_message(dict):
-	stream.put_string(JSON.stringify(dict, "", false))
+	if raw_rgb_transport and dict.has("obs"):
+		dict["physics_frame"] = Engine.get_physics_frames()
+		var pixels = PackedByteArray()
+		for obs in dict["obs"]:
+			for key in ["left_eye", "right_eye"]:
+				if obs.has(key):
+					var data: PackedByteArray = obs[key]
+					obs[key] = {"offset": pixels.size(), "length": data.size()}
+					pixels.append_array(data)
+		var metadata = JSON.stringify(dict, "", false).to_utf8_buffer()
+		stream.put_u32(8 + metadata.size() + pixels.size())
+		stream.put_data(PackedByteArray([82, 71, 66, 49])) # RGB1
+		stream.put_u32(metadata.size())
+		stream.put_data(metadata)
+		stream.put_data(pixels)
+	else:
+		stream.put_string(JSON.stringify(dict, "", false))
 
 
 func _send_env_info():
@@ -520,7 +539,13 @@ func handle_message() -> bool:
 		_send_dict_as_json_message(reply)
 		return handle_message()
 
+	if message["type"] == "observe":
+		RenderingServer.force_draw(false)
+		_send_dict_as_json_message({"type": "observe", "obs": _get_obs_from_agents(agents_training)})
+		return handle_message()
+
 	if message["type"] == "action":
+		step_include_rgb = bool(message.get("rgb", true))
 		var action = message["action"]
 		_set_agent_actions(action, agents_training)
 		need_to_send_obs = true
@@ -551,10 +576,10 @@ func _reset_agents(agents = all_agents):
 		agent.reset()
 
 
-func _get_obs_from_agents(agents: Array = all_agents):
+func _get_obs_from_agents(agents: Array = all_agents, include_rgb: bool = true):
 	var obs = []
 	for agent in agents:
-		obs.append(agent.get_obs())
+		obs.append(agent.get_obs_fast(include_rgb) if raw_rgb_transport else agent.get_obs())
 	return obs
 
 

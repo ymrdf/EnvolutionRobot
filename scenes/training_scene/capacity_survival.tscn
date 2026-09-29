@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+[ext_resource type="PackedScene" path="res://scenes/training_scene/training_scene.tscn" id="1"]
+[ext_resource type="Script" path="res://scenes/training_scene/competition.gd" id="2"]
+[node name="Competition" instance=ExtResource("1")]
+script = ExtResource("2")
+[node name="PlayingArea" parent="." index="2"]
+number_of_robots_to_spawn = 8
+policy_labels = Array[String](["96_w256_d3", "96_w512_d3", "96_w768_d3", "96_w256_d4", "96_w256_d5", "96_w512_d5", "96_w256_d3_frozen", "random"])
