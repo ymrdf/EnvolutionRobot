@@ -44,6 +44,10 @@ var current_demo_trajectory: Array
 
 var need_to_send_obs = false
 var raw_rgb_transport = false
+var gpu_rgb_transport = false
+var gpu_vision_bridges: Array = []
+var gpu_frame_id := 0
+var gpu_observation_ready := false
 var step_include_rgb = true
 var args = null
 var initialized = false
@@ -68,7 +72,9 @@ func _ready():
 func _initialize():
 	_get_agents()
 	args = _get_args()
-	raw_rgb_transport = args.get("transport", "hex") == "raw"
+	var transport = args.get("transport", "hex")
+	raw_rgb_transport = transport == "raw"
+	gpu_rgb_transport = transport == "gpu"
 	Engine.physics_ticks_per_second = _get_speedup() * 20  # Replace with function body.
 	Engine.time_scale = _get_speedup() * 1.0
 	prints(
@@ -206,6 +212,13 @@ func _training_process():
 		# disables rigid-body integration for the tick that is still in progress.
 		if just_reset or (need_to_send_obs and step_include_rgb):
 			RenderingServer.force_draw(false)
+		if gpu_rgb_transport and (just_reset or (need_to_send_obs and step_include_rgb)):
+			if not _capture_gpu_vision():
+				push_error("GPU vision capture failed")
+				get_tree().quit()
+				return
+			gpu_frame_id += 1
+			gpu_observation_ready = true
 
 		if just_reset:
 			just_reset = false
@@ -406,7 +419,22 @@ func _get_dict_json_message():
 
 
 func _send_dict_as_json_message(dict):
-	if raw_rgb_transport and dict.has("obs"):
+	if gpu_rgb_transport and dict.has("obs"):
+		dict["physics_frame"] = Engine.get_physics_frames()
+		if gpu_observation_ready:
+			for i in range(dict["obs"].size()):
+				var obs = dict["obs"][i]
+				obs["gpu_agent_index"] = i
+				obs["gpu_rgb"] = true
+				obs["gpu_frame_id"] = gpu_frame_id
+				# Diagnostic only: never enabled for normal GPU training.
+				if args.get("gpu_verify", "false") == "true":
+					var reference = agents_training[i].get_obs_fast(true)
+					obs["gpu_reference_left"] = reference["left_eye"].hex_encode()
+					obs["gpu_reference_right"] = reference["right_eye"].hex_encode()
+			gpu_observation_ready = false
+		stream.put_string(JSON.stringify(dict, "", false))
+	elif raw_rgb_transport and dict.has("obs"):
 		dict["physics_frame"] = Engine.get_physics_frames()
 		var pixels = PackedByteArray()
 		for obs in dict["obs"]:
@@ -514,6 +542,13 @@ func handle_message() -> bool:
 			# Reply while still paused: respawning one competitor must not run
 			# an uncommanded physics tick for every other competitor.
 			RenderingServer.force_draw(false)
+			if gpu_rgb_transport:
+				if not _capture_gpu_vision():
+					push_error("GPU vision capture failed after selective reset")
+					get_tree().quit()
+					return true
+				gpu_frame_id += 1
+				gpu_observation_ready = true
 			_send_dict_as_json_message({"type": "reset", "obs": _get_obs_from_agents(agents_training)})
 			return handle_message()
 		else:
@@ -541,6 +576,13 @@ func handle_message() -> bool:
 
 	if message["type"] == "observe":
 		RenderingServer.force_draw(false)
+		if gpu_rgb_transport:
+			if not _capture_gpu_vision():
+				push_error("GPU vision capture failed for observe")
+				get_tree().quit()
+				return true
+			gpu_frame_id += 1
+			gpu_observation_ready = true
 		_send_dict_as_json_message({"type": "observe", "obs": _get_obs_from_agents(agents_training)})
 		return handle_message()
 
@@ -579,8 +621,46 @@ func _reset_agents(agents = all_agents):
 func _get_obs_from_agents(agents: Array = all_agents, include_rgb: bool = true):
 	var obs = []
 	for agent in agents:
-		obs.append(agent.get_obs_fast(include_rgb) if raw_rgb_transport else agent.get_obs())
+		if gpu_rgb_transport:
+			obs.append(agent.get_obs_fast(false))
+		elif raw_rgb_transport:
+			obs.append(agent.get_obs_fast(include_rgb))
+		else:
+			obs.append(agent.get_obs())
 	return obs
+
+
+func _capture_gpu_vision() -> bool:
+	if gpu_vision_bridges.is_empty():
+		for i in range(agents_training.size()):
+			var agent = agents_training[i]
+			if not agent.left_eye_sensor or not agent.right_eye_sensor:
+				return false
+			var left_viewport: SubViewport = agent.left_eye_sensor.sub_viewport
+			var right_viewport: SubViewport = agent.right_eye_sensor.sub_viewport
+			var size = agent.left_eye_sensor.render_image_resolution
+			if size != agent.right_eye_sensor.render_image_resolution:
+				return false
+			var bridge = ClassDB.instantiate("GpuVisionBridge")
+			if bridge == null:
+				push_error("GpuVisionBridge GDExtension is not loaded")
+				return false
+			gpu_vision_bridges.append(bridge)
+			var socket_path = args.get("gpu_socket", "/tmp/sdaea_gpu_%d.sock" % _get_port())
+			if not bridge.initialize(left_viewport.get_texture().get_rid(),
+					right_viewport.get_texture().get_rid(), int(size.x), int(size.y), socket_path, i):
+				return false
+	for bridge in gpu_vision_bridges:
+		if not bridge.capture(false):
+			return false
+	RenderingServer.force_draw(false)
+	RenderingServer.force_sync()
+	return true
+
+
+func _exit_tree() -> void:
+	for bridge in gpu_vision_bridges:
+		bridge.shutdown()
 
 
 func _get_reward_from_agents(agents: Array = agents_training):

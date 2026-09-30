@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3]
+[ext_resource type="PackedScene" path="res://scenes/training_scene/training_scene.tscn" id="1"]
+[ext_resource type="Script" path="res://scenes/training_scene/competition.gd" id="2"]
+[node name="Competition" instance=ExtResource("1")]
+script = ExtResource("2")
+[node name="PlayingArea" parent="." index="2"]
+number_of_robots_to_spawn = 16
+policy_labels = Array[String](["ff_base", "m256_base", "ff_long", "m256_long", "ff_hp", "m256_hp", "ff_long_hp", "m256_long_hp", "ff_long_hp_t0", "m256_long_hp_t0", "frozen_passive", "frozen_old", "random_0", "random_1", "stationary_0", "stationary_1"])
+number_of_green_blocks_to_spawn = 120
+number_of_red_blocks_to_spawn = 80
+min_green_blocks = 120
+min_red_blocks = 80

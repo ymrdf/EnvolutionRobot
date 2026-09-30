@@ -1,0 +1,3 @@
+[submodule "native/gpu_vision_bridge/godot-cpp"]
+	path = native/gpu_vision_bridge/godot-cpp
+	url = https://github.com/godotengine/godot-cpp.git

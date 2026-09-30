@@ -1,0 +1,9 @@
+[configuration]
+
+entry_symbol = "gpu_vision_bridge_init"
+compatibility_minimum = "4.7"
+reloadable = false
+
+[libraries]
+
+linux.x86_64 = "res://addons/gpu_vision_bridge/bin/linux/libgpu_vision_bridge.linux.template_debug.x86_64.so"

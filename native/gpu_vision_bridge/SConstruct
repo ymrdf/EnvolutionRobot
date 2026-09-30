@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+import os
+
+from SCons.Script import Environment, Glob, SConscript
+
+env = Environment(tools=["default"], PLATFORM="")
+env = SConscript("godot-cpp/SConstruct", {"api_version": 4.7, "env": env})
+env.Append(CPPPATH=["src/"], LIBS=["vulkan"])
+library = env.SharedLibrary(
+    "../../addons/gpu_vision_bridge/bin/linux/libgpu_vision_bridge.linux.template_debug.x86_64.so",
+    source=Glob("src/*.cpp"),
+)
+Default(library)
